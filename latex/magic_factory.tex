@@ -1,0 +1,219 @@
+\documentclass{article}
+\usepackage{amsmath, amssymb, graphicx, booktabs}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{float}
+
+\title{Magic Factory Optimization using Z3}
+\author{Kaiwen Tan\thanks{Student Number: 2291797 Email: k.tan@student.tue.nl}}
+\date{September, 2025}
+
+\lstset{
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!60!black},
+    stringstyle=\color{red},
+    numbers=left,
+    numberstyle=\tiny,
+    breaklines=true,
+    frame=single,
+    columns=fullflexible
+}
+
+\begin{document}
+
+\maketitle
+
+\section{Modeling the Problem}
+
+\subsection{Parameters}
+\begin{itemize}
+  \item $T = 8$: number of trucks.
+  \item $C = 8000$: capacity (kg) per truck.
+  \item $P = 8$: maximum number of pallets per truck.
+  \item Pallet types:
+    \begin{itemize}
+      \item Nuzzles: 4 pallets, 700 kg each.
+      \item Skipples: 8 pallets, 1000 kg each, require cooling.
+      \item Crottles: 10 pallets, 2500 kg each.
+      \item Dupples: 20 pallets, 200 kg each.
+      \item Prittles: unlimited supply, 400 kg each (objective: maximize).
+    \end{itemize}
+  \item Cooling: only 3 trucks can carry skipples.
+\end{itemize}
+
+\subsection{Decision Variables}
+Let:
+\[
+x_{i,t} \in \mathbb{N}
+\]
+be the number of pallets of type $i$ assigned to truck $t$, where $i \in \{\text{nuzzle}, \text{prittle}, \text{skipple}, \text{crottle}, \text{dupple}\}$ and $t \in \{1, \ldots, 8\}$.
+
+Additionally:
+\[
+y_t \in \{0,1\}
+\]
+indicates whether truck $t$ is equipped with cooling (1) or not (0).
+
+\subsection{Constraints}
+\paragraph{Truck capacity (weight):}
+\[
+\forall t: \quad \sum_i (w_i \cdot x_{i,t}) \leq C
+\]
+
+\paragraph{Truck capacity (pallet count):}
+\[
+\forall t: \quad \sum_i x_{i,t} \leq P
+\]
+
+\paragraph{Supply limits:}
+\[
+\sum_t x_{\text{nuzzle},t} = 4, \quad
+\sum_t x_{\text{skipple},t} = 8, \quad
+\sum_t x_{\text{crottle},t} = 10, \quad
+\sum_t x_{\text{dupple},t} = 20
+\]
+
+\paragraph{Cooling requirement:}
+\[
+\sum_t y_t = 3, \quad \forall t: x_{\text{skipple},t} \leq P \cdot y_t
+\]
+
+\paragraph{Nuzzle distribution:}
+\[
+\forall t: \quad x_{\text{nuzzle},t} \leq 1
+\]
+
+\paragraph{Explosive combination (Part b only):}
+\[
+\forall t: \quad x_{\text{prittle},t} \cdot x_{\text{crottle},t} = 0
+\]
+
+\subsection{Objective Function}
+\[
+\text{maximize} \quad \sum_t x_{\text{prittle},t}
+\]
+
+\section{Solver Implementation using Z3}
+
+\begin{itemize}
+    \item Integer variables $n,p,s,c,d$ represent pallets per truck; boolean variables $cool$ indicate cooled trucks.
+    \item Truck-level constraints enforce:
+        \begin{itemize}
+            \item Maximum 8 pallets per truck
+            \item Weight limits
+            \item Nuzzle distribution (at most 1 per truck)
+            \item Skipples only on cooled trucks
+        \end{itemize}
+    \item Global constraints ensure delivery of all nuzzles, skipples, crottles, dupples, and exactly 3 cooled trucks.
+    \item Part (b) is handled by preventing prittles and crottles in the same truck using \texttt{Or(p[i]==0, c[i]==0)}.
+    \item The solver maximizes the total number of prittles.
+\end{itemize}
+
+
+\section{Results Part (a)}
+
+\subsection{Truck Assignments}
+
+\begin{table}[H]
+\centering
+\caption{Truck assignment of pallets for Part (a)}
+\small
+\begin{tabular}{c|ccccc|c|c}
+\toprule
+Truck & Nuzzles & Prittles & Skipples & Crottles & Dupples & Total Weight (kg) & Cooling \\
+\midrule
+1 & 0 & 1 & 0 & 2 & 5 & 6400 & False \\
+2 & 1 & 5 & 0 & 0 & 2 & 3100 & False \\
+3 & 1 & 0 & 0 & 2 & 5 & 6700 & False \\
+4 & 0 & 0 & 0 & 2 & 6 & 6200 & False \\
+5 & 1 & 7 & 0 & 0 & 0 & 3500 & False \\
+6 & 0 & 3 & 1 & 2 & 2 & 7600 & True \\
+7 & 1 & 1 & 6 & 0 & 0 & 7100 & True \\
+8 & 0 & 5 & 1 & 2 & 0 & 8000 & True \\
+\midrule
+Total & 4 & 22 & 8 & 10 & 20 & 48600 & 3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Solver Performance and Optimization Results}
+
+\begin{table}[H]
+\centering
+\caption{Optimization results summary (template)}
+\begin{tabular}{l c}
+\toprule
+Metric & Value \\
+\midrule
+Total Prittles delivered & 22 \\
+Solver runtime (s) & 0.0241 \\
+Solver status & sat \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{itemize}
+    \item
+    From the obtained solution, we can see that the solver successfully enforced all constraints. in Part (a), the solver was able to place them flexibly, which allowed the total number of prittles to reach the maximum.
+    
+    \item Observe solver runtime and efficiency.  
+    The solver completed the optimization very quickly, taking only 0.0241 s.
+\end{itemize}
+
+
+
+\section{Results Part (b)}
+
+\subsection{Truck Assignments}
+
+\begin{table}[H]
+\centering
+\caption{Truck assignment of pallets for Part (b)}
+\small
+\begin{tabular}{c|ccccc|c|c}
+\toprule
+Truck & Nuzzles & Prittles & Skipples & Crottles & Dupples & Total Weight (kg) & Cooling \\
+\midrule
+1 & 0 & 4 & 4 & 0 & 0 & 5600 & True \\
+2 & 1 & 0 & 0 & 2 & 5 & 6700 & False \\
+3 & 1 & 0 & 0 & 2 & 5 & 6700 & False \\
+4 & 0 & 0 & 2 & 2 & 4 & 7800 & True \\
+5 & 0 & 8 & 0 & 0 & 0 & 3200 & False \\
+6 & 1 & 0 & 2 & 2 & 1 & 7900 & True \\
+7 & 1 & 0 & 0 & 2 & 5 & 6700 & False \\
+8 & 0 & 8 & 0 & 0 & 0 & 3200 & False \\
+\midrule
+Total & 4 & 20 & 8 & 10 & 20 & 48400 & 3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Solver Performance and Optimization Results}
+
+\begin{table}[h!]
+\centering
+\caption{Optimization results summary}
+\begin{tabular}{l c}
+\toprule
+Metric & Value \\
+\midrule
+Total Prittles delivered & 20 \\
+Solver runtime (s) & 0.5243 \\
+Solver status & sat \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{itemize}
+    \item   
+    In Part (b), the additional constraint preventing prittles and crottles from being assigned to the same truck adds a layer of complexity. The solver correctly respects this restriction along with all previous constraints. As a result, trucks carry either prittles or crottles but not both, and the nuzzles are still properly distributed.
+    
+    \item   
+    The runtime increased to 0.5243 s compared to Part (a), reflecting the added combinatorial challenge introduced by the explosive combination constraint. Despite this, the solver still finds the optimal solution reliably.
+\end{itemize}
+
+
+
+\end{document}
