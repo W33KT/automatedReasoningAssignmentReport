@@ -59,3 +59,4 @@ if result == sat:
         print(f"{i+1:>5} | {n_val:>7} {p_val:>8} {s_val:>8} {c_val:>8} {d_val:>7} {total_weight:>12} {cool_val}")
 else:
     print("No solution found.")
+    
