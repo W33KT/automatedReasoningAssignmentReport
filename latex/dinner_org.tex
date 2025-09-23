@@ -1,0 +1,281 @@
+\documentclass{article}
+\usepackage{amsmath, amssymb, graphicx, booktabs}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{float}
+
+\title{Dinner Organisation}
+\author{Kaiwen Tan\thanks{Student Number: 2291797 Email: k.tan@student.tue.nl}}
+\date{September, 2025}
+
+\lstset{
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!60!black},
+    stringstyle=\color{red},
+    numbers=left,
+    numberstyle=\tiny,
+    breaklines=true,
+    frame=single,
+    columns=fullflexible
+}
+
+\begin{document}
+
+\maketitle
+
+\section{Modeling the Problem}
+
+\subsection{Parameters}
+\begin{itemize}
+  \item $N = 10$: number of participants.
+  \item $H = 5$: number of houses, each occupied by one couple.
+  \item $K = 5$: number of courses.
+  \item Each house can host at most $5$ participants per course.
+  \item Each couple must host exactly $2$ courses.
+  \item Every course is served in two houses simultaneously.
+  \item Guest distribution: in each course, each hosting couple has exactly 3 guests.
+\end{itemize}
+
+\subsection{Decision Variables}
+\begin{itemize}
+    \item Integer variable 
+    \[
+        \text{attend}_{p,k} \in \{0,1,2,3,4\}, \quad p=0,\dots,9, \; k=0,\dots,4,
+    \]
+    indicating the house where participant $p$ attends course $k$.  
+
+    \item Boolean variable 
+    \[
+        \text{serve}_{h,k} \in \{\text{False}, \text{True}\}, \quad h=0,\dots,4, \; k=0,\dots,4,
+    \]
+    indicating whether house $h$ hosts course $k$.
+
+    \item Auxiliary integer variable 
+    \[
+        \text{meet}_{p,q} \in \{0,\dots,5\}, \quad 0 \le p < q \le 9,
+    \]
+    counting the number of courses where participants $p$ and $q$ attend the same house:
+    \[
+        \text{meet}_{p,q} = \sum_{k=0}^{4} [\text{attend}_{p,k} = \text{attend}_{q,k}].
+    \]
+\end{itemize}
+
+\subsection{Constraints}
+
+\paragraph{Course hosting.}
+\[
+\forall k:\quad \sum_{h=0}^{4} \text{If}(\text{serve}_{h,k}, 1, 0) = 2, \qquad
+\forall h:\quad \sum_{k=0}^{4} \text{If}(\text{serve}_{h,k}, 1, 0) = 2
+\]
+
+\paragraph{Couples attend their own house when hosting.}  
+For house $h$, let the couple be participants $2h$ and $2h+1$:
+\[
+\forall h,k:\quad \text{serve}_{h,k} \Rightarrow (\text{attend}_{2h,k}=h \wedge \text{attend}_{2h+1,k}=h)
+\]
+
+\paragraph{Non-hosting participants attend exactly one house per course.}
+\[
+\forall p,k:\quad \sum_{h=0}^{4} [\text{attend}_{p,k} = h] = 1
+\]
+
+\paragraph{Each serving house has exactly 5 participants (couple + 3 guests).}
+\[
+\forall h,k:\quad \sum_{p=0}^{9} [\text{attend}_{p,k} = h] = \text{If}(\text{serve}_{h,k}, 5, 0)
+\]
+
+\paragraph{Meeting counts.}  
+For each pair $p \neq q$:
+\[
+\text{meet}_{p,q} = \sum_{k=0}^{4} [\text{attend}_{p,k} = \text{attend}_{q,k}]
+\]
+
+\paragraph{Meeting frequency constraints.}
+\begin{itemize}
+    \item property 1: $\text{meet}_{p,q} \ge 1$
+    \item property 2: $\text{meet}_{p,q} \le 3$
+\end{itemize}
+
+
+
+\paragraph{Couples never meet outside their own house (property 3).}
+\[
+\forall h,k:\quad (\text{attend}_{2h,k} = \text{attend}_{2h+1,k}) \Rightarrow (\text{attend}_{2h,k} = h)
+\]
+
+
+
+
+
+\paragraph{Distinct guests per house (property 4).}  
+For house $h$ hosting courses $k_1$ and $k_2$, the guest sets must be disjoint:
+\[
+\forall h, i \notin \{2h,2h+1\}:\quad \sum_{t\in\{k_1,k_2\}} [\text{attend}_{i,t} = h] \le 1
+\]
+
+\section{Solver Implementation using Z3}
+
+\begin{itemize}
+    \item Integer variables $\text{attend}_{p,k}$ encode participant attendance at houses during courses.
+    \item Boolean variables $\text{serve}_{h,k}$ encode which houses host each course.
+    \item Couples are fixed in their own house during hosting.
+    \item Attendance constraints ensure each serving house has exactly 5 participants (couple + 3 guests).
+    \item Each couple hosts exactly 2 courses, and each course is served in exactly 2 houses.
+    \item Part (a):
+    \begin{itemize}
+        \item Require each two people meet at least once.
+        \item Require couples never meet outside or guests are distinctive, but not both.
+    \end{itemize}
+    \item Part (b):
+    \begin{itemize}
+        \item Require each pair meets at most 3 times.
+        \item Couples never meet outside.
+        \item Guests are distinctive per house.
+    \end{itemize}
+\end{itemize}
+
+
+\section{Results Part (a)}
+
+\subsection{Schedule}
+
+\begin{table}[H]
+\centering
+\caption{Dinner schedule for Part (a) - Scenario 1 (Property 1 + Property 3)}
+\small
+\begin{tabular}{c|c|c}
+\toprule
+Course & Hosting Houses & Guest Distribution \\
+\midrule
+0 & 1, 2 & 1: [0, 2, 3, 6, 9], 2: [1, 4, 5, 7, 8] \\
+1 & 0, 1 & 0: [0, 1, 5, 7, 9], 1: [2, 3, 4, 6, 8] \\
+2 & 0, 2 & 0: [0, 1, 2, 7, 8], 2: [3, 4, 5, 6, 9] \\
+3 & 3, 4 & 3: [0, 2, 4, 6, 7], 4: [1, 3, 5, 8, 9] \\
+4 & 3, 4 & 3: [1, 3, 4, 6, 7], 4: [0, 2, 5, 8, 9] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Dinner schedule for Part (a) - Scenario 2 (Property 1 + Property 4)}
+\small
+\begin{tabular}{c|c|c}
+\toprule
+Course & Hosting Houses & Guest Distribution \\
+\midrule
+0 & 2, 3 & 2: [1, 4, 5, 8, 9], 3: [0, 2, 3, 6, 7] \\
+1 & 0, 4 & 0: [0, 1, 2, 5, 7], 4: [3, 4, 6, 8, 9] \\
+2 & 2, 4 & 2: [3, 4, 5, 6, 7], 4: [0, 1, 2, 8, 9] \\
+3 & 1, 3 & 1: [0, 1, 2, 3, 4], 3: [5, 6, 7, 8, 9] \\
+4 & 0, 1 & 0: [0, 1, 4, 6, 8], 1: [2, 3, 5, 7, 9] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Dinner schedule for Part (a) - Scenario 3 (Property 1 + Property 3 + Property 4)}
+\small
+\begin{tabular}{c|c|c}
+\toprule
+Course & Hosting Houses & Guest Distribution \\
+\midrule
+\multicolumn{3}{c}{No results} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Solver Performance and Optimization Results}
+
+\begin{table}[H]
+\centering
+\caption{Optimization results summary - Scenario 1}
+\begin{tabular}{l c}
+\toprule
+Metric & Value \\
+\midrule
+Feasible schedule found & Yes \\
+Solver runtime (s) & 0.0405 \\
+Solver status & sat \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Optimization results summary - Scenario 2}
+\begin{tabular}{l c}
+\toprule
+Metric & Value \\
+\midrule
+Feasible schedule found & Yes \\
+Solver runtime (s) & 0.0189 \\
+Solver status & sat \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Optimization results summary - Scenario 3}
+\begin{tabular}{l c}
+\toprule
+Metric & Value \\
+\midrule
+Feasible schedule found & No \\
+Solver runtime (s) & 4.7659 \\
+Solver status & unsat \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{itemize}
+    \item Scenario 1 confirms that a schedule satisfying Property 1 and Property 3 exists.
+    \item Scenario 2 confirms that a schedule satisfying Property 1 and Property 4 exists.
+    \item Scenario 3 confirms that satisfying Properties 1, 3, and 4 simultaneously is impossible (expected UNSAT).
+\end{itemize}
+
+
+\section{Results Part (b)}
+
+\subsection{Schedule}
+\begin{table}[H]
+\centering
+\caption{Dinner schedule for Part (b) (template: fill with solver output)}
+\small
+\begin{tabular}{c|c|c}
+\toprule
+Course & Hosting Houses & Guest Distribution \\
+\midrule
+0 & 1, 4 & 1: [1, 2, 3, 4, 6], 4: [0, 5, 7, 8, 9] \\
+1 & 1, 4 & 1: [0, 2, 3, 5, 7], 4: [1, 4, 6, 8, 9] \\
+2 & 2, 3 & 2: [0, 2, 4, 5, 8], 3: [1, 3, 6, 7, 9] \\
+3 & 0, 3 & 0: [0, 1, 3, 4, 9], 3: [2, 5, 6, 7, 8] \\
+4 & 0, 2 & 0: [0, 1, 2, 7, 8], 2: [3, 4, 5, 6, 9] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Solver Performance and Optimization Results}
+\begin{table}[H]
+\centering
+\caption{Optimization results summary (Part b)}
+\begin{tabular}{l c}
+\toprule
+Metric & Value \\
+\midrule
+Feasible schedule found & Yes \\
+Solver runtime (s) & 0.0180 \\
+Solver status & sat \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{itemize}
+    \item The solver verified that property 2 can indeed be satisfied together with both 3 and 4.
+\end{itemize}
+
+\end{document}
