@@ -21,4 +21,4 @@ if s.check() == sat:
     m = s.model()
     print(m)
 else:
-    print("No overflow within 15 iterations.")
+    print("No overflow or underflow within 15 iterations.")
