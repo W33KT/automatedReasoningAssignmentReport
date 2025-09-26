@@ -15,11 +15,13 @@ for i in range(15):
     ylist.append(y)
 
 
-s = Solver()
-s.add(xlist[14] < 1e9 , xlist[15] >= 1e9)
+opt = Optimize()
+opt.add(xlist[14] < 10**9, xlist[15] >= 10**9)
 
-if s.check() == sat:
-    m = s.model()
-    print(m)
+h = opt.minimize(x0) 
+
+if opt.check() == sat:
+    m = opt.model()
+    print("Minimal x0 =", m[x0])
 else:
     print("No solution")
