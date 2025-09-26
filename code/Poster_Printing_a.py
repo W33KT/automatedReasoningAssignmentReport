@@ -64,6 +64,18 @@ for c in range(N_canvas):
 for c in range(N_canvas):
     for i in range(N_poster):
         for j in range(i+1, N_poster):
+            
+            # efficient height and width
+            w_eff_i = If(r[c][i], h[i], w[i])
+            h_eff_i = If(r[c][i], w[i], h[i])
+            w_eff_j = If(r[c][j], h[j], w[j])
+            h_eff_j = If(r[c][j], w[j], h[j])
+
+            s.add(Implies(And(z[c][i], z[c][j]),
+                Or(x[c][i] + w_eff_i <= x[c][j], x[c][j] + w_eff_j <= x[c][i],
+                   y[c][i] + h_eff_i <= y[c][j], y[c][j] + h_eff_j <= y[c][i])))
+            
+'''
             b_left  = Bool(f"left_{c}_{i}_{j}")
             b_right = Bool(f"right_{c}_{i}_{j}")
             b_below = Bool(f"below_{c}_{i}_{j}")
@@ -81,6 +93,7 @@ for c in range(N_canvas):
             s.add(Implies(And(z[c][i], z[c][j], b_right), x[c][j] + w_eff_j <= x[c][i]))
             s.add(Implies(And(z[c][i], z[c][j], b_below), y[c][i] + h_eff_i <= y[c][j]))
             s.add(Implies(And(z[c][i], z[c][j], b_above), y[c][j] + h_eff_j <= y[c][i]))
+'''
 
 # not fit in any canvases
 for c in range(N_canvas):
@@ -123,6 +136,7 @@ if res == sat:
     print("\ntotal profit =", m.evaluate(total_profit))
 else:
     print(res)
+
 
 
 
