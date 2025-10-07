@@ -69,9 +69,10 @@ def check_equivalence(file1, file2):
 
     return all(nodes1[o1] == nodes2[o2] for o1, o2 in zip(outputs1, outputs2))
 
-# 示例
+
 if __name__ == "__main__":
     file_original = "circuit_bench\\circuit01.bench"
     file_optimized = "circuit_bench\\circuit01_opt.bench"
     equivalent = check_equivalence(file_original, file_optimized)
     print(f"Circuits equivalent? {equivalent}")
+
