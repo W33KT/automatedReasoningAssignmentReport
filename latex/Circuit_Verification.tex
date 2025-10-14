@@ -1,0 +1,129 @@
+\documentclass{article}
+\usepackage{amsmath, amssymb, graphicx, booktabs}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{float}
+
+\title{Circuit  Vertification}
+\author{Luxue Wen\thanks{Student Number: 2271796 Email: l.wen@student.tue.nl}}
+\date{September, 2025}
+
+\lstset{
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!60!black},
+    stringstyle=\color{red},
+    numbers=left,
+    numberstyle=\tiny,
+    breaklines=true,
+    frame=single,
+    columns=fullflexible
+}
+
+\begin{document}
+
+\maketitle
+
+\section{Modeling the Problem}
+
+\subsection{Parameters for constructing BDD}
+\begin{itemize}
+  \item $inputs$: name of input variables.
+  \item $gates$: dictionary of logic gates.
+  \item $outputs$: name of output variables.
+  \item $bdd$: BDD instance.
+  \item $node\_bdd$: BDD nodes of each signal.
+  \item $nodes1, nodes2$: final BDDs of two circuits.
+\end{itemize}
+
+\subsection{Intermediate Variables for constructing BDD}
+\begin{itemize}
+  \item $gate\_name, gate\_type, gate\_inputs$: information including name, type and inputs of logic gates.
+  \item $remaining$: copy of logic gates that have not been mapping to BDD nodes.
+\end{itemize}
+
+\subsection{Construction Function}
+\subsubsection{Original Version}
+For initialization,
+\[
+remaing = gates,
+\]
+\[ 
+node\_bdd = inputs
+\]
+While remaining $\neq \emptyset$,
+\[
+f_{gate}(x_1, x_2, \dots, x_k) =
+\begin{cases}
+x_1 \wedge x_2 \wedge \dots \wedge x_k, & gate\_type = AND \\
+x_1 \vee x_2 \vee \dots \vee x_k, & gate\_type = OR \\
+\neg x_1, & gate\_type = NOT \\
+\neg (x_1 \wedge x_2 \wedge \dots \wedge x_k), & gate\_type = NAND \\
+\neg (x_1 \vee x_2 \vee \dots \vee x_k), & gate\_type = NOR \\
+x_1 \oplus x_2, & gate\_type = XOR \\
+\neg (x_1 \oplus x_2), & gate\_type = XNOR
+\end{cases}
+\]
+Only constructing BDD nodes when their inputs are ready,
+\[
+\text{available} = \{ x_i \in \text{gate\_inputs} \mid x_i \in \text{node\_bdd} \}
+\]
+\[
+node\_bdd = f_{gate}(x_1,...,x_k), \ with \{x_1,...,x_k\} \subseteq available
+\]
+After constructing, deleting the gate from remaining,
+\[
+remaining \gets remaining \setminus {gate\_inputs}
+\]
+Repeating until $remaining = \emptyset$.
+
+\subsubsection{Optimized Version}
+\begin{itemize}
+  \item Using iterative algorithm to construct BDD instead of creating the remaining dictionary.
+  \item Introducing cache in order to avoid repeated construction.
+\end{itemize}
+\[
+\text{node\_bdd}(x) =
+\begin{cases}
+x, & x \in inputs \\[8pt]
+cache[x], & x \in dom(cahce)\\
+\displaystyle \bigcup_{x \in \text{inputs}(s)} \text{node\_bdd}(x), & \text{otherwise}
+\end{cases}
+\]
+\[
+dom(cache) = \{ k  | \ \exists v, \ (k,v) \in cache\}
+\]
+
+
+\subsection{Equivalence Checking}
+Checking the equivalence of all the outputs of two BDDs that are constructed from a pair of bench files,
+\[
+\bigwedge_{\substack{o_1 \in outputs_1 \\ o_2 \in outputs_2}} \big( \text{node\_bdd}_1(o_1) \equiv \text{node\_bdd}_2(o_1) \big)
+\]
+
+\section{Usage of dd.autoref.BDD library}
+
+\begin{itemize}
+    \item The program first parses the .bench files to extract inputs, outputs, and gate definitions.
+    \item Then, it constructs BDD nodes for each logic gate and progressively combines them to obtain the output BDDs of the circuits.
+    \item Finally, by comparing the BDDs of corresponding outputs, the program determines whether the two circuits are logically equivalent.
+\end{itemize}
+
+\section{Results Part}
+\begin{table}[H]
+\centering
+\caption{equivalence checking of two bench files and comparing runtime}
+\small
+\begin{tabular}{c|cccccccccccccc}
+\toprule
+Pair & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 & 11 & 12 & 13 & 14\\
+\midrule
+Equivalence & Yes & Yes & No & Yes & Yes & Yes& Yes & No & No & Yes & Yes & Yes & No & / \\
+runtime(ms) & 3 & 2 & 14 & 850& 500 & 0.00 & 461 & 9 & 187 & 23 & 130 & 255 & 64 & overrun \\
+runtime\_opt(ms) & 2 & 1 & 8 & 500 & 250 & 0.00 & 210 & 8 & 31 & 9 & 94 & 128 & 17 & overrun\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\end{document}
