@@ -1,6 +1,7 @@
 from z3 import *
+import time
 
-
+start = time.time()
 x0 = BitVec('x0', 32)
 
 
@@ -22,3 +23,6 @@ if s.check() == sat:
     print(m)
 else:
     print("No overflow or underflow within 15 iterations.")
+
+end = time.time()
+print("Runtime:", end - start, "seconds")

@@ -1,5 +1,7 @@
 from z3 import *
+import time
 
+start = time.time()
 x0 = Int('x0')
 
 x = x0
@@ -7,6 +9,7 @@ y = 1
 
 xlist = [x0]
 ylist = [1]
+
 
 for i in range(15):
     x = x + y
@@ -20,8 +23,12 @@ opt.add(xlist[14] < 10**9, xlist[15] >= 10**9)
 
 h = opt.minimize(x0) 
 
+
 if opt.check() == sat:
     m = opt.model()
     print("Minimal x0 =", m[x0])
 else:
     print("No solution")
+
+end = time.time()
+print("Runtime:", end - start, "seconds")
