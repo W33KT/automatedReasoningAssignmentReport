@@ -1,0 +1,646 @@
+\documentclass{article}
+\usepackage{amsmath, amssymb, graphicx, booktabs}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{float}
+
+\title{Report for the practical assignment
+Automated Reasoning 2IMF25}
+\author{
+\begin{tabular}{c c c}
+\multicolumn{3}{c}{Group 37}\\[1em]
+Luxue Wen & Kaiwen Tan & Yan Liu\\
+student number: 2271796 & student number: 2291797 & student number: 2176246\\
+email: l.wen@student.tue.nl & email: k.tan@student.tue.nl &  email: y.liu17@student.tue.nl
+\end{tabular}
+}
+\date{September, 2025}
+
+\lstset{
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!60!black},
+    stringstyle=\color{red},
+    numbers=left,
+    numberstyle=\tiny,
+    breaklines=true,
+    frame=single,
+    columns=fullflexible
+}
+
+\begin{document}
+
+\maketitle
+
+\section*{Problem 1: Magic Factory}
+
+\section{Modeling the Problem}
+
+\subsection{Parameters}
+\begin{itemize}
+  \item $T = 8$: number of trucks.
+  \item $C = 8000$: capacity (kg) per truck.
+  \item $P = 8$: maximum number of pallets per truck.
+  \item Pallet types:
+    \begin{itemize}
+      \item Nuzzles: 4 pallets, 700 kg each.
+      \item Skipples: 8 pallets, 1000 kg each, require cooling.
+      \item Crottles: 10 pallets, 2500 kg each.
+      \item Dupples: 20 pallets, 200 kg each.
+      \item Prittles: unlimited supply, 400 kg each (objective: maximize).
+    \end{itemize}
+  \item Cooling: only 3 trucks can carry skipples.
+\end{itemize}
+
+\subsection{Decision Variables}
+Let:
+\[
+x_{i,t} \in \mathbb{N}
+\]
+be the number of pallets of type $i$ assigned to truck $t$, where $i \in \{\text{nuzzle}, \text{prittle}, \text{skipple}, \text{crottle}, \text{dupple}\}$ and $t \in \{1, \ldots, 8\}$.
+
+Additionally:
+\[
+y_t \in \{0,1\}
+\]
+indicates whether truck $t$ is equipped with cooling (1) or not (0).
+
+\subsection{Constraints}
+\paragraph{Truck capacity (weight):}
+\[
+\forall t: \quad \sum_i (w_i \cdot x_{i,t}) \leq C
+\]
+
+\paragraph{Truck capacity (pallet count):}
+\[
+\forall t: \quad \sum_i x_{i,t} \leq P
+\]
+
+\paragraph{Supply limits:}
+\[
+\sum_t x_{\text{nuzzle},t} = 4, \quad
+\sum_t x_{\text{skipple},t} = 8, \quad
+\sum_t x_{\text{crottle},t} = 10, \quad
+\sum_t x_{\text{dupple},t} = 20
+\]
+
+\paragraph{Cooling requirement:}
+\[
+\sum_t y_t = 3, \quad \forall t: x_{\text{skipple},t} \leq P \cdot y_t
+\]
+
+\paragraph{Nuzzle distribution:}
+\[
+\forall t: \quad x_{\text{nuzzle},t} \leq 1
+\]
+
+\paragraph{Explosive combination (Part b only):}
+\[
+\forall t: \quad x_{\text{prittle},t} \cdot x_{\text{crottle},t} = 0
+\]
+
+\subsection{Objective Function}
+\[
+\text{maximize} \quad \sum_t x_{\text{prittle},t}
+\]
+
+\section{Solver Implementation using Z3}
+
+\begin{itemize}
+    \item Integer variables $n,p,s,c,d$ represent pallets per truck; boolean variables $cool$ indicate cooled trucks.
+    \item Truck-level constraints enforce:
+        \begin{itemize}
+            \item Maximum 8 pallets per truck
+            \item Weight limits
+            \item Nuzzle distribution (at most 1 per truck)
+            \item Skipples only on cooled trucks
+        \end{itemize}
+    \item Global constraints ensure delivery of all nuzzles, skipples, crottles, dupples, and exactly 3 cooled trucks.
+    \item Part (b) is handled by preventing prittles and crottles in the same truck using \texttt{Or(p[i]==0, c[i]==0)}.
+    \item The solver maximizes the total number of prittles.
+\end{itemize}
+
+
+\section{Results Part (a)}
+
+\subsection{Truck Assignments}
+
+\begin{table}[H]
+\centering
+\caption{Truck assignment of pallets for Part (a)}
+\small
+\begin{tabular}{c|ccccc|c|c}
+\toprule
+Truck & Nuzzles & Prittles & Skipples & Crottles & Dupples & Total Weight (kg) & Cooling \\
+\midrule
+1 & 0 & 1 & 0 & 2 & 5 & 6400 & False \\
+2 & 1 & 5 & 0 & 0 & 2 & 3100 & False \\
+3 & 1 & 0 & 0 & 2 & 5 & 6700 & False \\
+4 & 0 & 0 & 0 & 2 & 6 & 6200 & False \\
+5 & 1 & 7 & 0 & 0 & 0 & 3500 & False \\
+6 & 0 & 3 & 1 & 2 & 2 & 7600 & True \\
+7 & 1 & 1 & 6 & 0 & 0 & 7100 & True \\
+8 & 0 & 5 & 1 & 2 & 0 & 8000 & True \\
+\midrule
+Total & 4 & 22 & 8 & 10 & 20 & 48600 & 3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Solver Performance and Optimization Results}
+
+\begin{table}[H]
+\centering
+\caption{Optimization results summary (template)}
+\begin{tabular}{l c}
+\toprule
+Metric & Value \\
+\midrule
+Total Prittles delivered & 22 \\
+Solver runtime (s) & 0.0241 \\
+Solver status & sat \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{itemize}
+    \item
+    From the obtained solution, we can see that the solver successfully enforced all constraints. in Part (a), the solver was able to place them flexibly, which allowed the total number of prittles to reach the maximum.
+    
+    \item Observe solver runtime and efficiency.  
+    The solver completed the optimization very quickly, taking only 0.0241 s.
+\end{itemize}
+
+
+
+\section{Results Part (b)}
+
+\subsection{Truck Assignments}
+
+\begin{table}[H]
+\centering
+\caption{Truck assignment of pallets for Part (b)}
+\small
+\begin{tabular}{c|ccccc|c|c}
+\toprule
+Truck & Nuzzles & Prittles & Skipples & Crottles & Dupples & Total Weight (kg) & Cooling \\
+\midrule
+1 & 0 & 4 & 4 & 0 & 0 & 5600 & True \\
+2 & 1 & 0 & 0 & 2 & 5 & 6700 & False \\
+3 & 1 & 0 & 0 & 2 & 5 & 6700 & False \\
+4 & 0 & 0 & 2 & 2 & 4 & 7800 & True \\
+5 & 0 & 8 & 0 & 0 & 0 & 3200 & False \\
+6 & 1 & 0 & 2 & 2 & 1 & 7900 & True \\
+7 & 1 & 0 & 0 & 2 & 5 & 6700 & False \\
+8 & 0 & 8 & 0 & 0 & 0 & 3200 & False \\
+\midrule
+Total & 4 & 20 & 8 & 10 & 20 & 48400 & 3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Solver Performance and Optimization Results}
+
+\begin{table}[h!]
+\centering
+\caption{Optimization results summary}
+\begin{tabular}{l c}
+\toprule
+Metric & Value \\
+\midrule
+Total Prittles delivered & 20 \\
+Solver runtime (s) & 0.5243 \\
+Solver status & sat \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{itemize}
+    \item   
+    In Part (b), the additional constraint preventing prittles and crottles from being assigned to the same truck adds a layer of complexity. The solver correctly respects this restriction along with all previous constraints. As a result, trucks carry either prittles or crottles but not both, and the nuzzles are still properly distributed.
+    
+    \item   
+    The runtime increased to 0.5243 s compared to Part (a), reflecting the added combinatorial challenge introduced by the explosive combination constraint. Despite this, the solver still finds the optimal solution reliably.
+\end{itemize}
+
+\vspace{1em}
+\section*{Problem 2: Poster Printing}
+
+\setcounter{section}{0}
+\section{Modeling the Problem}
+
+\subsection{Parameters}
+\begin{itemize}
+  \item $N\_canvas$ = 3: number of each canvas.
+  \item $N\_poster$ = 12: number of each canvas.
+  \item $w = [5, 5, 4, 3, 7, 6, 5, 4, 6, 4, 6, 5]$: width of each poster.
+  \item $h = [6, 6, 10, 11, 7, 10, 13, 10, 9, 15, 10, 10]$: height of each poster.
+  \item $price = [10, 14, 13, 15, 10, 17, 21, 16, 16, 23, 19, 17]$: price of each poster.
+  \item $W = [12, 12, 20]$: width of each canvas.
+  \item $H = [12, 12, 20]$: height of each canvas.
+  \item $cost = [30, 30, 90]$: cost of each canvas.
+  \item $minimal\_profit$ = 60: minimal profit of printing.
+\end{itemize}
+
+\subsection{Decision Variables}
+To fit posters into canvases, we introduce the following variables:
+\begin{itemize}
+  \item $z_{c,p} \in \mathbb{B}$ for $c = 1,...,N\_canvas,\ p = 1,...,N\_poster$: the value of $z_{c,p}$ will be true if and only if post[p] will be printed on canvas[c]
+  \item $r_{c,p} \in \mathbb{B}$ for $c = 1,...,N\_canvas,\ p = 1,...,N\_poster$: the value of $r_{c,p}$ will be true if and only if post[p] will be turned $90^\circ$ 
+  \item $u_c \in \mathbb{B}$ for $c = 1,...,N\_canvas$: the value of $u_c$ will be true if and only if canvas[c] will be used
+  \item $x_{c,p},\ y_{c,p} \in \mathbb{N}$ for $c = 1,...,N\_canvas,\ p = 1,...,N\_poster$: the values of $x_{c,p}$ and $y_{c,p}$ indicate the bottom-left coordinate $(x,y)$ of $poster[p]$ placed in $canvas[c]$
+  \item $w\_eff\_i,h\_eff\_i,w\_eff\_j,h\_eff\_j \in \mathbb{N}$: the width and height of post[i] and post[j]
+  \item $total\_profit \in \mathbb{N}$: the value of total profit after printing
+\end{itemize}
+
+\subsection{Constraints}
+For $post[p]$, it cannot be printed more than once. This is expressed by the formula
+\[
+\sum_i z_{p,i} \leq 1
+\]
+\\Next we determine that whether $post[p]$ fits into $canvas[c]$. This is expressed by the formula 
+\begin{align*}
+z_{c,p} \Rightarrow \, 
+& \Bigl( (\lnot r_{c,p} \wedge x_{c,p} \ge 0 \wedge y_{c,p} \ge 0 \wedge x_{c,p} + w[p] \le W[c] \wedge y_{c,p} + h[p] \le H[c] \wedge w[p] \le W[c] \wedge h[p] \le H[c]) \nonumber\\
+& \vee ( r_{c,p} \wedge x_{c,p} \ge 0 \wedge y_{c,p} \ge 0 \wedge x_{c,p} + w[p] \le W[c] \wedge y_{c,p} + h[p] \le H[c]) \wedge h[p] \le W[c] \wedge w[p] \le H[c] \Bigr)
+\end{align*}
+Additionally, every two posters $post[i]$ and $post[j]$ should have no overlap. This is expressed by the formula
+\begin{align*}
+(z_{c,i} \wedge z_{c,j}) \Rightarrow \, 
+& \Bigl( (x_{c,i} + w_eff_i \le x_{c,j} ) \vee (x_{c,j} + w_eff_j \le x_{c,i} ) \nonumber\\
+& \vee(y_{c,i} + h_eff_i \le y_{c,j} ) \vee (y_{c,j} + h_eff_j \le y_{c,i} ))
+\end{align*}
+Then, we associate $canvase[c]$ and $poster[p]$. This is expressed by the formula
+\[
+z_{c,p} \Rightarrow u_c
+\]
+Finally, we set the minimal profit. This is expressed by the formula
+\[
+total\_profit \ge mininal\_profit
+\]
+
+\subsection{Calculation Function}
+The calculation function of $w\_eff\_i, \ h\_eff\_i, \ w\_eff\_j, \ h\_eff\_j$ is expressed by the formula
+\[
+w\_eff\_i =
+\begin{cases}
+h_i, & \text{if } r_{c,i} = 1 \\[4pt]
+w_i, & \text{if } r_{c,i} = 0
+\end{cases}
+\ h\_eff\_i =
+\begin{cases}
+w_i, & \text{if } r_{c,i} = 1 \\[4pt]
+h_i, & \text{if } r_{c,i} = 0
+\end{cases}
+\]
+\[
+w\_eff\_j =
+\begin{cases}
+h_j, & \text{if } r_{c,j} = 1 \\[4pt]
+w_j, & \text{if } r_{c,j} = 0
+\end{cases}
+\ h\_eff\_j =
+\begin{cases}
+w_j, & \text{if } r_{c,j} = 1 \\[4pt]
+h_j, & \text{if } r_{c,j} = 0
+\end{cases}
+\]
+The calculation function of $total\_profit$ is expressed by the formula
+\[
+\sum_{\substack{c=1,\dots,N_{\text{canvas}} \\ p=1,\dots,N_{\text{poster}} \\ z_{c,p} = \text{true}}} price_p - \sum_{\substack{c=1,\dots,N_{\text{canvas}} \\ u_c = \text{true}}} cost_c
+\]
+
+
+\section{Solver Implementation using Z3}
+
+\begin{itemize}
+    \item In this project, we used the Z3 SMT solver to model and solve a poster layout and minimal profit problem. 
+    \item For part (a), a solver is instantiated to formally represent and manage all logical constraints. For part (b), an optimization tasks, an optimization solver is employed to handle both the constraints and the objective functions that need to be maximized.
+    \item The defined constraints are then incorporated into the solver, ensuring that all relationships and restrictions among variables are properly captured.
+    \item The solver explores the solution space to determine whether a feasible assignment exists that satisfies all constraints.
+    \item If such an assignment is found, the values of the decision variables are extracted to analyze the specific configuration that meets the problem requirements.
+\end{itemize}
+
+\section{Results Part}
+
+\subsection{posters Assignments with three canvases}
+
+\begin{table}[H]
+\centering
+\caption{posters Assignments with three canvases for Part (a)}
+\small
+\begin{tabular}{c|cccccccccccc|c|c|c}
+\toprule
+canvas & p0 & p1 & p2 & p3 & p4  & p5 & p6 & p7 & p8 & p9 & p10 & p11 & price & cost & profit\\
+\midrule
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &\\
+1 & 10 & 14 & 0 & 15 & 0 & 0 & 0 & 16 & 0 & 0 & 0 & 0 & 55 & 30 &\\
+2 & 0 & 0 & 13 & 0 & 0 & 17 & 21 & 0 & 16 & 23 & 19 & 17 & 126 & 90 &\\
+\midrule
+Total & & & & & & & & & & & & & 181 & 120 & 61\\
+\bottomrule
+\end{tabular}
+\end{table}
+It is possible to obtain profit at least 60.
+
+\subsection{posters Assignments with two small canvases}
+
+\begin{table}[H]
+\centering
+\caption{posters Assignments with three canvases for Part (a)}
+\small
+\begin{tabular}{c|cccccccccccc|c|c|c}
+\toprule
+canvas & p0 & p1 & p2 & p3 & p4  & p5 & p6 & p7 & p8 & p9 & p10 & p11 & price & cost & profit\\
+\midrule
+0 & 10 & 14 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 19 & 43 & 30\\
+1 & 0 & 0 & 0 & 15 & 0 & 0 & 0 & 16 & 0 & 0 & 0 & 17 & 48 & 30 &\\
+\midrule
+Total & & & & & & & & & & & & & 91 & 60 & 31\\
+\bottomrule
+\end{tabular}
+\end{table}
+The highest profit created by the two small canvases is 31.
+
+\subsection{Solver Performance}
+
+\begin{itemize}
+    \item    
+    In Part (a), the run time is around 900 ms.
+    \item 
+    In Part (a), the run time is around 2 s.
+\end{itemize}
+
+\vspace{1em}
+\setcounter{section}{0}
+\section*{Problem 3: Dinner Organisation}
+
+\section{Modeling the Problem}
+
+\subsection{Parameters}
+\begin{itemize}
+  \item $N = 10$: number of participants.
+  \item $H = 5$: number of houses, each occupied by one couple.
+  \item $K = 5$: number of courses.
+  \item Each house can host at most $5$ participants per course.
+  \item Each couple must host exactly $2$ courses.
+  \item Every course is served in two houses simultaneously.
+  \item Guest distribution: in each course, each hosting couple has exactly 3 guests.
+\end{itemize}
+
+\subsection{Decision Variables}
+\begin{itemize}
+    \item Integer variable 
+    \[
+        \text{attend}_{p,k} \in \{0,1,2,3,4\}, \quad p=0,\dots,9, \; k=0,\dots,4,
+    \]
+    indicating the house where participant $p$ attends course $k$.  
+
+    \item Boolean variable 
+    \[
+        \text{serve}_{h,k} \in \{\text{False}, \text{True}\}, \quad h=0,\dots,4, \; k=0,\dots,4,
+    \]
+    indicating whether house $h$ hosts course $k$.
+
+    \item Auxiliary integer variable 
+    \[
+        \text{meet}_{p,q} \in \{0,\dots,5\}, \quad 0 \le p < q \le 9,
+    \]
+    counting the number of courses where participants $p$ and $q$ attend the same house:
+    \[
+        \text{meet}_{p,q} = \sum_{k=0}^{4} [\text{attend}_{p,k} = \text{attend}_{q,k}].
+    \]
+\end{itemize}
+
+\subsection{Constraints}
+
+\paragraph{Course hosting.}
+\[
+\forall k:\quad \sum_{h=0}^{4} \text{If}(\text{serve}_{h,k}, 1, 0) = 2, \qquad
+\forall h:\quad \sum_{k=0}^{4} \text{If}(\text{serve}_{h,k}, 1, 0) = 2
+\]
+
+\paragraph{Couples attend their own house when hosting.}  
+For house $h$, let the couple be participants $2h$ and $2h+1$:
+\[
+\forall h,k:\quad \text{serve}_{h,k} \Rightarrow (\text{attend}_{2h,k}=h \wedge \text{attend}_{2h+1,k}=h)
+\]
+
+\paragraph{Non-hosting participants attend exactly one house per course.}
+\[
+\forall p,k:\quad \sum_{h=0}^{4} [\text{attend}_{p,k} = h] = 1
+\]
+
+\paragraph{Each serving house has exactly 5 participants (couple + 3 guests).}
+\[
+\forall h,k:\quad \sum_{p=0}^{9} [\text{attend}_{p,k} = h] = \text{If}(\text{serve}_{h,k}, 5, 0)
+\]
+
+\paragraph{Meeting counts.}  
+For each pair $p \neq q$:
+\[
+\text{meet}_{p,q} = \sum_{k=0}^{4} [\text{attend}_{p,k} = \text{attend}_{q,k}]
+\]
+
+\paragraph{Meeting frequency constraints.}
+\begin{itemize}
+    \item property 1: $\text{meet}_{p,q} \ge 1$
+    \item property 2: $\text{meet}_{p,q} \le 3$
+\end{itemize}
+
+
+
+\paragraph{Couples never meet outside their own house (property 3).}
+\[
+\forall h,k:\quad (\text{attend}_{2h,k} = \text{attend}_{2h+1,k}) \Rightarrow (\text{attend}_{2h,k} = h)
+\]
+
+
+\paragraph{Distinct guests per house (property 4).}  
+For house $h$ hosting courses $k_1$ and $k_2$, the guest sets must be disjoint:
+\[
+\forall h, i \notin \{2h,2h+1\}:\quad \sum_{t\in\{k_1,k_2\}} [\text{attend}_{i,t} = h] \le 1
+\]
+
+\section{Solver Implementation using Z3}
+
+\begin{itemize}
+    \item Integer variables $\text{attend}_{p,k}$ encode participant attendance at houses during courses.
+    \item Boolean variables $\text{serve}_{h,k}$ encode which houses host each course.
+    \item Couples are fixed in their own house during hosting.
+    \item Attendance constraints ensure each serving house has exactly 5 participants (couple + 3 guests).
+    \item Each couple hosts exactly 2 courses, and each course is served in exactly 2 houses.
+    \item Part (a):
+    \begin{itemize}
+        \item Require each two people meet at least once.
+        \item Require couples never meet outside or guests are distinctive, but not both.
+    \end{itemize}
+    \item Part (b):
+    \begin{itemize}
+        \item Require each pair meets at most 3 times.
+        \item Couples never meet outside.
+        \item Guests are distinctive per house.
+    \end{itemize}
+\end{itemize}
+
+
+\section{Results Part (a)}
+
+\subsection{Schedule}
+
+\begin{table}[H]
+\centering
+\caption{Dinner schedule for Part (a) - Scenario 1 (Property 1 + Property 3)}
+\small
+\begin{tabular}{c|c|c}
+\toprule
+Course & Hosting Houses & Guest Distribution \\
+\midrule
+0 & 1, 2 & 1: [0, 2, 3, 6, 9], 2: [1, 4, 5, 7, 8] \\
+1 & 0, 1 & 0: [0, 1, 5, 7, 9], 1: [2, 3, 4, 6, 8] \\
+2 & 0, 2 & 0: [0, 1, 2, 7, 8], 2: [3, 4, 5, 6, 9] \\
+3 & 3, 4 & 3: [0, 2, 4, 6, 7], 4: [1, 3, 5, 8, 9] \\
+4 & 3, 4 & 3: [1, 3, 4, 6, 7], 4: [0, 2, 5, 8, 9] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Dinner schedule for Part (a) - Scenario 2 (Property 1 + Property 4)}
+\small
+\begin{tabular}{c|c|c}
+\toprule
+Course & Hosting Houses & Guest Distribution \\
+\midrule
+0 & 2, 3 & 2: [1, 4, 5, 8, 9], 3: [0, 2, 3, 6, 7] \\
+1 & 0, 4 & 0: [0, 1, 2, 5, 7], 4: [3, 4, 6, 8, 9] \\
+2 & 2, 4 & 2: [3, 4, 5, 6, 7], 4: [0, 1, 2, 8, 9] \\
+3 & 1, 3 & 1: [0, 1, 2, 3, 4], 3: [5, 6, 7, 8, 9] \\
+4 & 0, 1 & 0: [0, 1, 4, 6, 8], 1: [2, 3, 5, 7, 9] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Dinner schedule for Part (a) - Scenario 3 (Property 1 + Property 3 + Property 4)}
+\small
+\begin{tabular}{c|c|c}
+\toprule
+Course & Hosting Houses & Guest Distribution \\
+\midrule
+\multicolumn{3}{c}{No results} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Solver Performance and Optimization Results}
+
+\begin{table}[H]
+\centering
+\caption{Optimization results summary - Scenario 1}
+\begin{tabular}{l c}
+\toprule
+Metric & Value \\
+\midrule
+Feasible schedule found & Yes \\
+Solver runtime (s) & 0.0405 \\
+Solver status & sat \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Optimization results summary - Scenario 2}
+\begin{tabular}{l c}
+\toprule
+Metric & Value \\
+\midrule
+Feasible schedule found & Yes \\
+Solver runtime (s) & 0.0189 \\
+Solver status & sat \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Optimization results summary - Scenario 3}
+\begin{tabular}{l c}
+\toprule
+Metric & Value \\
+\midrule
+Feasible schedule found & No \\
+Solver runtime (s) & 4.7659 \\
+Solver status & unsat \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{itemize}
+    \item Scenario 1 confirms that a schedule satisfying Property 1 and Property 3 exists.
+    \item Scenario 2 confirms that a schedule satisfying Property 1 and Property 4 exists.
+    \item Scenario 3 confirms that satisfying Properties 1, 3, and 4 simultaneously is impossible (expected UNSAT).
+\end{itemize}
+
+
+\section{Results Part (b)}
+
+\subsection{Schedule}
+\begin{table}[H]
+\centering
+\caption{Dinner schedule for Part (b) (template: fill with solver output)}
+\small
+\begin{tabular}{c|c|c}
+\toprule
+Course & Hosting Houses & Guest Distribution \\
+\midrule
+0 & 1, 4 & 1: [1, 2, 3, 4, 6], 4: [0, 5, 7, 8, 9] \\
+1 & 1, 4 & 1: [0, 2, 3, 5, 7], 4: [1, 4, 6, 8, 9] \\
+2 & 2, 3 & 2: [0, 2, 4, 5, 8], 3: [1, 3, 6, 7, 9] \\
+3 & 0, 3 & 0: [0, 1, 3, 4, 9], 3: [2, 5, 6, 7, 8] \\
+4 & 0, 2 & 0: [0, 1, 2, 7, 8], 2: [3, 4, 5, 6, 9] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Solver Performance and Optimization Results}
+\begin{table}[H]
+\centering
+\caption{Optimization results summary (Part b)}
+\begin{tabular}{l c}
+\toprule
+Metric & Value \\
+\midrule
+Feasible schedule found & Yes \\
+Solver runtime (s) & 0.0180 \\
+Solver status & sat \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{itemize}
+    \item The solver verified that property 2 can indeed be satisfied together with both 3 and 4.
+\end{itemize}
+
+\vspace{1em}
+\section*{Problem 4: Program Verification }
+\setcounter{section}{0}
+
+\vspace{1em}
+\section*{Problem 5: Configurable Systems Testingg}
+\setcounter{section}{0}
+
+\vspace{1em}
+\section*{Problem 6: Finite State Automata}
+\setcounter{section}{0}
+
+\vspace{1em}
+\section*{Problem 7: Finite State Automata}
+\setcounter{section}{0}
+
+
+\end{document}
