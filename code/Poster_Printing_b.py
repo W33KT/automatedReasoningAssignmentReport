@@ -1,8 +1,6 @@
 from z3 import *
 
-# ---------------------------
 # parameters
-# ---------------------------
 
 # parameters of poster
 w = [5, 5, 4, 3, 7, 6, 5, 4, 6, 4, 6, 5]
@@ -34,9 +32,7 @@ u = [Bool(f"u_{c}") for c in range(N_canvas)]
 
 s = Optimize()
 
-# ---------------------------
 # constraint
-# ---------------------------
 
 # a poster is printed at most once
 for i in range(N_poster):
@@ -104,18 +100,14 @@ for c in range(N_canvas):
     for p in range(N_poster):
         s.add(Implies(z[c][p], u[c]))
 
-# ---------------------------
 # calculate profit
-# ---------------------------
 
 total_profit = Sum([If(z[c][p], price[p], 0) for c in range(N_canvas) for p in range(N_poster)]) \
                - Sum([If(u[c], cost[c], 0) for c in range(N_canvas)])
 h_opt = s.maximize(total_profit)
 
 
-# ---------------------------
 # solution
-# ---------------------------
 print("solving...")
 res = s.check()
 print("check() ->", res)
@@ -135,5 +127,6 @@ if res == sat:
     print("\ntotal profit =", m.evaluate(total_profit))
 else:
     print(res)
+
 
 
