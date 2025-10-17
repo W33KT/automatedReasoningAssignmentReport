@@ -69,11 +69,12 @@ for i in range(num_tasks):
                  start_vars[i] + duration[i] <= start_vars[j],
                  start_vars[j] + duration[j] <= start_vars[i]))
 
-for i in range(num_tasks):
-    for j in range(i+1, num_tasks):
-        if power[i] + power[j] > Pmax:
-            s.add(Or(start_vars[i] + duration[i] <= start_vars[j],
-                     start_vars[j] + duration[j] <= start_vars[i]))
+time_horizon = sum(duration)
+for t in range(time_horizon):
+    s.add(Sum([
+        If(And(start_vars[i] <= t, t < start_vars[i] + duration[i]), power[i], 0)
+        for i in range(num_tasks)
+    ]) <= Pmax)
 
 for i in range(num_tasks):
     s.add(tardiness_vars[i] >= start_vars[i] + duration[i] - deadline[i])
@@ -135,3 +136,4 @@ ax.grid(True, axis='x', linestyle='--', alpha=0.6)
 
 plt.tight_layout()
 plt.show()
+
