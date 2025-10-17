@@ -217,10 +217,10 @@ Solver status & sat \\
 \end{table}
 
 \begin{itemize}
-    \item   
+    \item    
     In Part (b), the additional constraint preventing prittles and crottles from being assigned to the same truck adds a layer of complexity. The solver correctly respects this restriction along with all previous constraints. As a result, trucks carry either prittles or crottles but not both, and the nuzzles are still properly distributed.
     
-    \item   
+    \item    
     The runtime increased to 0.5243 s compared to Part (a), reflecting the added combinatorial challenge introduced by the explosive combination constraint. Despite this, the solver still finds the optimal solution reliably.
 \end{itemize}
 
@@ -268,8 +268,8 @@ z_{c,p} \Rightarrow \,
 Additionally, every two posters $post[i]$ and $post[j]$ should have no overlap. This is expressed by the formula
 \begin{align*}
 (z_{c,i} \wedge z_{c,j}) \Rightarrow \, 
-& \Bigl( (x_{c,i} + w_eff_i \le x_{c,j} ) \vee (x_{c,j} + w_eff_j \le x_{c,i} ) \nonumber\\
-& \vee(y_{c,i} + h_eff_i \le y_{c,j} ) \vee (y_{c,j} + h_eff_j \le y_{c,i} ))
+& \Bigl( (x_{c,i} + w_{eff_i} \le x_{c,j} ) \vee (x_{c,j} + w_{eff_j} \le x_{c,i} ) \nonumber\\
+& \vee(y_{c,i} + h_{eff_i} \le y_{c,j} ) \vee (y_{c,j} + h_{eff_j} \le y_{c,i} ))
 \end{align*}
 Then, we associate $canvase[c]$ and $poster[p]$. This is expressed by the formula
 \[
@@ -281,26 +281,26 @@ total\_profit \ge mininal\_profit
 \]
 
 \subsection{Calculation Function}
-The calculation function of $w\_eff\_i, \ h\_eff\_i, \ w\_eff\_j, \ h\_eff\_j$ is expressed by the formula
+The calculation function of $w_{eff_i}, \ h_{eff_i}, \ w_{eff_j}, \ h_{eff_j}$ is expressed by the formula
 \[
-w\_eff\_i =
+w_{eff_i} =
 \begin{cases}
 h_i, & \text{if } r_{c,i} = 1 \\[4pt]
 w_i, & \text{if } r_{c,i} = 0
 \end{cases}
-\ h\_eff\_i =
+\quad h_{eff_i} =
 \begin{cases}
 w_i, & \text{if } r_{c,i} = 1 \\[4pt]
 h_i, & \text{if } r_{c,i} = 0
 \end{cases}
 \]
 \[
-w\_eff\_j =
+w_{eff_j} =
 \begin{cases}
 h_j, & \text{if } r_{c,j} = 1 \\[4pt]
 w_j, & \text{if } r_{c,j} = 0
 \end{cases}
-\ h\_eff\_j =
+\quad h_{eff_j} =
 \begin{cases}
 w_j, & \text{if } r_{c,j} = 1 \\[4pt]
 h_j, & \text{if } r_{c,j} = 0
@@ -631,8 +631,119 @@ Solver status & sat \\
 \setcounter{section}{0}
 
 \vspace{1em}
-\section*{Problem 5: Configurable Systems Testingg}
+
+\section*{Problem 5: Configurable Systems Testing}
 \setcounter{section}{0}
+
+\section{Modeling and Implementation}
+
+\subsection{Methodology}
+This report details the analysis of five configurable software systems, whose valid configurations are defined by constraints in DIMACS CNF format. The core of the methodology was to use a Binary Decision Diagram (BDD) to create a compact and canonical representation of each system's valid configuration space. All subsequent analyses were performed on this BDD representation using the \texttt{OxiDD} library in Python.
+
+The primary objectives for each system were to:
+\begin{itemize}
+    \item[\textbf{(i)}]   Determine the size of the BDD in terms of node count.
+    \item[\textbf{(ii)}]  Calculate the total number of valid configurations, $|V|$.
+    \item[\textbf{(iii)}] Perform Uniform Random Sampling (URS) to find the selection ratio of a specific feature ($x_{42}$).
+    \item[\textbf{(iv)}]  Count the total number of valid pairwise feature interactions.
+    \item[\textbf{(v)}]   Find the size of a small test suite, $|B|$, that achieves pairwise coverage.
+\end{itemize}
+
+\subsection{Implementation Details}
+For each system, the DIMACS file was parsed to extract the clauses and the recommended variable order from `c vo` lines. This order was applied during BDD construction to minimize its size. A weighted random walk algorithm was implemented for the URS task, and a greedy set-cover algorithm was used for the pairwise cover generation.
+
+\section{Results and Analysis}
+The implemented solution was run on the five provided systems. The results reveal significant differences in their structural complexity and computational demands.
+
+\subsection{buildroot.dimacs}
+\begin{table}[H]
+\centering
+\caption{Results for \texttt{buildroot.dimacs}}
+\begin{tabular}{l l}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+(i) BDD Nodes & 1,000 \\
+(ii) Valid Configurations $|V|$ & $\approx 1.98 \times 10^{158}$ \\
+(iii) URS Ratio $k_1/k_0$ for $x_{42}$ & 5024 / 4976 \\
+(iv) Pairwise Interactions & 621,270 \\
+(v) Cover Set Size $|B|$ & Incomplete (96\% finished) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{toybox.dimacs}
+\begin{table}[H]
+\centering
+\caption{Results for \texttt{toybox.dimacs}}
+\begin{tabular}{l l}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+(i) BDD Nodes & 949 \\
+(ii) Valid Configurations $|V|$ & $\approx 1.45 \times 10^{17}$ \\
+(iii) URS Ratio $k_1/k_0$ for $x_{42}$ & 0 / 10000 \\
+(iv) Pairwise Interactions & 256,494 \\
+(v) Cover Set Size $|B|$ & Incomplete (65\% finished) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{busybox.dimacs}
+\begin{table}[H]
+\centering
+\caption{Results for \texttt{busybox.dimacs}}
+\begin{tabular}{l l}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+(i) BDD Nodes & 3,076 \\
+(ii) Valid Configurations $|V|$ & $\approx 3.42 \times 10^{194}$ \\
+(iii) URS Ratio $k_1/k_0$ for $x_{42}$ & 1644 / 8356 \\
+(iv) Pairwise Interactions & 1,322,443 \\
+(v) Cover Set Size $|B|$ & Incomplete (projected $>$161 hours) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{embtoolkit.dimacs}
+\begin{table}[H]
+\centering
+\caption{Results for \texttt{embtoolkit.dimacs}}
+\begin{tabular}{l p{7cm}}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+(i) BDD Nodes & 172,157 \\
+(ii) Valid Configurations $|V|$ & (An integer with approx. 340 digits) \\
+(iii) URS Ratio $k_1/k_0$ for $x_{42}$ & Not Run (projected $>$179 hours) \\
+(iv) Pairwise Interactions & Not Run \\
+(v) Cover Set Size $|B|$ & Not Run \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{uClinux.dimacs}
+\begin{table}[H]
+\centering
+\caption{Results for \texttt{uClinux.dimacs}}
+\begin{tabular}{l l}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+(i) BDD Nodes & 2,667 \\
+(ii) Valid Configurations $|V|$ & $\approx 1.63 \times 10^{91}$ \\
+(iii) URS Ratio $k_1/k_0$ for $x_{42}$ & 0 / 10000 \\
+(iv) Pairwise Interactions & 3,013,528 \\
+(v) Cover Set Size $|B|$ & Incomplete (projected $>$10 hours) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Conclusion on Time and Machine Limitations}
+The BDD-based approach proved effective for representing the configuration spaces. However, the results clearly demonstrate significant computational limitations when analyzing systems with high structural complexity. For systems like \texttt{busybox}, \texttt{embtoolkit}, and \texttt{uClinux}, the sheer size of the BDD or the number of interactions made some analysis tasks (especially tasks (iii) and (v)) computationally intractable. 
+
+The incomplete and ``Not Run'' results are a direct consequence of these time and machine constraints, as the algorithm's runtime grows substantially with the problem's complexity, making it infeasible to obtain a complete result for the most complex systems within a reasonable timeframe on the available hardware.
 
 \vspace{1em}
 \section*{Problem 6: Finite State Automata}
