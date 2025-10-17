@@ -1,0 +1,210 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage{amsmath, amssymb}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{caption}
+\geometry{margin=1in}
+
+\begin{document}
+
+\title{2IMF25 Assignment  – Problem 6: Program Verification}
+\author{Liu Yan  \\ Eindhoven University of Technology}
+\date{\today}
+\maketitle
+
+\section{Finite State Automata (Problem 6)}
+
+\textbf{Problem statement.}\\\\
+This problem aims to analyze a finite-state automaton (FSA)
+using Binary Decision Diagrams (BDDs).
+The specific tasks are as follows:
+
+\begin{enumerate}
+  \item[(a)] Compactly represent the FSA by a BDD using a suitable encoding and variable order.
+  \item[(b)] Determine whether the accepting states are reachable from the initial states by:
+  \begin{itemize}
+    \item[(i)] taking only 0-transitions,
+    \item[(ii)] taking only 1-transitions, or
+    \item[(iii)] alternating 0–1 transitions, i.e., by a path 
+    \(s_0 \xrightarrow{0} s_1 \xrightarrow{1} s_2 \xrightarrow{0} \dots s_k \)
+    with \(s_k \in F\).
+  \end{itemize}
+  Justify the approach and clearly state what each BDD represents.
+\end{enumerate}
+
+The experiment is demonstrated using the input file \texttt{bakery.1.c.ba}.
+
+
+
+\subsection*{Methodology: BDD-based Reachability Analysis}
+
+A Binary Decision Diagram (BDD) compactly encodes Boolean relations 
+and enables efficient symbolic traversal of large state spaces.
+Each system state is represented as a vector of Boolean variables.
+
+The analysis process (implemented in \texttt{finite\_state\_autonata02.py}) proceeds as follows:
+
+\begin{enumerate}
+  \item Parse and read the automaton file to extract the number of states, transitions, initial and accepting states;
+  \item Compute the number of bits required for binary encoding of states;
+  \item Define the BDD variable set 
+        \(\{x_0,\dots,x_{n-1},y_0,\dots,y_{n-1}\}\),
+        representing current and next states;
+    \item Build the transition relation:
+    For each transition $(s,t)$, construct a Boolean conjunction of corresponding bits:
+    \[
+    \bigwedge_{i=0}^{n-1}(x_i \leftrightarrow y_i)
+    \]
+    and combine all local transitions using disjunction (OR) into the global relation:
+    \[
+    T = \bigvee_{(s,t)\in E}\bigwedge_{i=0}^{n-1}(x_i \leftrightarrow y_i)
+    \]
+
+  \item Use an interleaved variable order (e.g., \(x_0,y_0,x_1,y_1,\dots\)) 
+  
+        to reduce node count and cache conflicts;
+  \item Compute reachable states iteratively as
+  \[
+  R_{k+1}=R_k\cup\mathrm{Image}(R_k,T)
+  \]
+  until a fixpoint is reached.
+\end{enumerate}
+
+For the three restricted modes, the program constructs filtered transition relations
+\(T_0, T_1, T_{alt}\)
+corresponding to 0-only, 1-only, and alternating 0–1 transitions.
+
+
+
+\subsection*{Implementation Overview}
+
+The Python script \texttt{finite\_state\_autonata02.py} executes the following steps:
+
+\begin{enumerate}
+  \item Parse the automaton file (\texttt{bakery.1.c.ba});
+  \item Build the symbolic BDD-based transition relation \(T\);
+  \item Perform reachability analysis for the three transition restrictions;
+  \item Cross-check the symbolic results with an explicit state-space traversal;
+  \item Print runtime statistics and analysis logs.
+\end{enumerate}
+
+
+
+\subsection*{System Parameters}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{l|l}
+\textbf{Parameter} & \textbf{Value} \\\hline
+Input file & \texttt{bakery.1.c.ba} \\
+States & 1506 \\
+Transitions & 2697 \\
+State range & 0--1505 \\
+State encoding bits & 11 \\
+BDD variables & $\{x_0,\dots,x_{10},y_0,\dots,y_{10}\}$ (interleaved order) \\
+\end{tabular}
+\caption{System parameters for BDD-based FSA analysis.}
+\end{table}
+
+
+
+\subsection*{Experimental Results}
+
+The program successfully parsed the automaton file \texttt{bakery.1.c.ba},
+containing 1506 states and 2697 transitions.
+Each state was encoded using 11 bits with interleaved variables
+\((x_0,\dots,x_{10},y_0,\dots,y_{10})\).
+The BDD transition relation was built successfully.
+
+Reachability analyses produced the following results:
+
+\begin{itemize}
+  \item (i) Only 0-transitions: accepting states reachable (True)
+  \item (ii) Only 1-transitions: accepting states reachable (True)
+  \item (iii) Alternating 0–1 transitions: accepting states reachable (True)
+\end{itemize}
+
+Explicit cross-check confirmed the symbolic results:
+\begin{itemize}
+  \item 0-edges = 2338, 1-edges = 359
+  \item reachable states = \{1, 16, (|S$_0$|=3, |S$_1$|=2)\}
+  \item all verdicts = True
+\end{itemize}
+
+All transitive closures converged in one iteration,
+and the total runtime was approximately 0.003 seconds.
+
+
+
+\subsection*{Interpretation}
+
+If the automaton does not explicitly define accepting states,
+all states are considered accepting by default.
+Therefore, any reachable state is automatically an accepting state.
+This explains why all three transition restrictions yield True results.
+
+
+
+\subsection*{Symbolic vs. Explicit Comparison}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{l|l|p{7cm}}
+\textbf{Method} & \textbf{Feature} & \textbf{Description} \\\hline
+Explicit traversal & Enumerates all states & Intuitive to implement but computationally expensive for large systems \\
+Symbolic (BDD) analysis & Operates on Boolean functions & Compact representation, high efficiency, consistent with explicit results \\
+\end{tabular}
+\caption{Comparison between explicit traversal and symbolic BDD analysis.}
+\end{table}
+
+Explicit analysis is only used to validate symbolic results.
+BDD-based symbolic reasoning performs Boolean operations directly over state encodings,
+achieving the same accuracy without enumerating all transitions.
+
+
+
+\subsection*{Conclusions}
+
+\begin{itemize}
+  \item Under all three transition restrictions (0-only, 1-only, alternating 0–1),
+        accepting states are reachable.
+  \item Symbolic and explicit analyses produce identical results.
+  \item The automaton is highly connected across different transition modes.
+  \item BDD-based reachability converges in one iteration and executes efficiently
+        (runtime $\approx$ 0.003 s).
+\end{itemize}
+
+
+
+\subsection*{Appendix Table}
+
+The following table summarizes experimental results for the analyzed automaton files.
+Each entry reports the total number of states and transitions,
+the reachability results for 0-only, 1-only, and alternating 0–1 transitions,
+and the total runtime in seconds.
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{l|c|c|c|c|c|c}
+\textbf{File name} & \textbf{States} & \textbf{Transitions} &
+\textbf{0-trans} & \textbf{1-trans} &
+\textbf{0–1 alternating} & \textbf{Runtime (s)} \\\hline
+\texttt{bakery.1.c.ba} & 1506 & 2697 & True & True & True & 0.03 \\
+\texttt{bakery.2.c.ba} & 1146 & 2085 & True & True & True & 0.02 \\
+\texttt{fischer.2.c.ba} & 21733 & 67590 & True & True & True & 1.25 \\
+\texttt{fischer.3.1.c.ba} & 638 & 1401 & True & True & True & 0.02 \\
+\texttt{fischer.3.2.c.ba} & 1536 & 3856 & True & True & True & 0.05 \\
+\texttt{fischer.3.c.ba} & 637 & 1400 & True & True & True & 0.02 \\
+\texttt{mcs.1.2.c.ba} & 7968 & 21509 & True & True & True & 0.30 \\
+\texttt{NFA\_hard\_1.ba} & 4959 & 26850 & True & True & True & 0.34 \\
+\texttt{NFA\_hard\_2.ba} & 4857 & 24147 & True & True & True & 0.35 \\
+\texttt{phils.1.1.c.ba} & 161 & 466 & True & True & True & 0.01 \\
+\texttt{phils.2.c.ba} & 581 & 2350 & True & True & True & 0.02 \\
+\end{tabular}
+\caption{Summary of FSA analysis results for multiple input files.}
+\end{table}
+
+
+
+\end{document}
