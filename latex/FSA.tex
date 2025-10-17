@@ -48,32 +48,33 @@ The analysis process (implemented in \texttt{finite\_state\_autonata02.py}) proc
 \begin{enumerate}
   \item Parse and read the automaton file to extract the number of states, transitions, initial and accepting states;
   \item Compute the number of bits required for binary encoding of states;
-  \item Define the BDD variable set 
-        \(\{x_0,\dots,x_{n-1},y_0,\dots,y_{n-1}\}\),
-        representing current and next states;
+    \item Define the BDD variable set $\{x_0,\dots,x_{m-1},y_0,\dots,y_{m-1},a\}$:
+          $x_i$/$y_i$ encode the $i$-th bit of current/next state in an interleaved order
+          $(x_0,y_0,x_1,y_1,\dots)$, and $a$ encodes the 0/1 action label;
     \item Build the transition relation:
-    For each transition $(s,t)$, construct a Boolean conjunction of corresponding bits:
-    \[
-    \bigwedge_{i=0}^{n-1}(x_i \leftrightarrow y_i)
-    \]
-    and combine all local transitions using disjunction (OR) into the global relation:
-    \[
-    T = \bigvee_{(s,t)\in E}\bigwedge_{i=0}^{n-1}(x_i \leftrightarrow y_i)
-    \]
-
-  \item Use an interleaved variable order (e.g., \(x_0,y_0,x_1,y_1,\dots\)) 
-  
-        to reduce node count and cache conflicts;
-  \item Compute reachable states iteratively as
-  \[
-  R_{k+1}=R_k\cup\mathrm{Image}(R_k,T)
-  \]
-  until a fixpoint is reached.
+      For every edge $(s, \alpha, t)$ in the automaton, 
+      the program encodes the source state $s$, the destination state $t$, 
+      and the transition label $\alpha$ as Boolean vectors.
+      Each transition is represented in the BDD as a conjunction of:
+      \begin{itemize}
+        \item the bits of the current state ($x_i$ variables),
+        \item the action bit $a$ indicating whether $\alpha = 0$ or $1$, and
+        \item the bits of the next state ($y_i$ variables).
+      \end{itemize}
+      All transitions are then combined with a disjunction (OR) to form
+      the global transition relation $T$.
+    \item Use an interleaved variable order (e.g., $x_0,y_0,x_1,y_1,\dots$) to reduce node count and cache conflicts;
+    \item Compute reachable states iteratively as
+          $R_{k+1}=R_k\cup\mathrm{Image}(R_k,T)$ until a fixpoint is reached.
+    
 \end{enumerate}
 
 For the three restricted modes, the program constructs filtered transition relations
 \(T_0, T_1, T_{alt}\)
 corresponding to 0-only, 1-only, and alternating 0–1 transitions.
+We start from $S_0 = I, S_1 = \bot$; the first expansion uses $a = 1$-edges (to $S_1$),
+then $a = 0$-edges (back to $S_0$), iterating to a fixpoint.
+
 
 
 
@@ -102,7 +103,8 @@ States & 1506 \\
 Transitions & 2697 \\
 State range & 0--1505 \\
 State encoding bits & 11 \\
-BDD variables & interleaved: $x_0,y_0,\dots,x_9,y_9$, then $a$ \\
+BDD variables & interleaved: $x_0,y_0,\dots,x_{10},y_{10}$, then $a$ \\
+
 \end{tabular}
 \caption{System parameters for BDD-based FSA analysis.}
 \end{table}
@@ -114,7 +116,7 @@ BDD variables & interleaved: $x_0,y_0,\dots,x_9,y_9$, then $a$ \\
 The program successfully parsed the automaton file \texttt{bakery.1.c.ba},
 containing 1506 states and 2697 transitions.
 Each state was encoded using 11 bits with interleaved variables
-\((x_0,\dots,x_{10},y_0,\dots,y_{10})\).
+$(x_0,\dots,x_{10},y_0,\dots,y_{10})$, plus the action variable $a$.
 The BDD transition relation was built successfully.
 
 Reachability analyses produced the following results:
