@@ -1215,15 +1215,13 @@ C_{max} \ge start_i + duration_i,\ i \in \{0, \dots, num\_tasks-1\}
   \item Before optimization,
 
   
-(a) synchronous power constraints and scheduling constraints,
+synchronous power constraints and scheduling constraints,
 
-
-(b) the sum of the power consumptions of all running tasks does not exceed the system limit Pmax.
 
 \item Optimization strategy:
 
 
-(a) First minimizing the maximum completion time,
+First minimizing the maximum completion time,
 \[
 C_{\max}^* = \min C_{\max}
 \]
@@ -1231,16 +1229,7 @@ Then, minimizing total tardiness given the fixed completion time,
 \[
 \min \sum_{i=1}^{N} t_i  \ \text{s.t. } C_{\max} = C_{\max}^*
 \]
-
-
-(b)pairwise mutual exclusion constraint,
-\[
-(power_i + power_j > P_{\max})
-\;\Rightarrow\;
-\big( start_i + duration_i \le start_j \;\lor\;
-start_j + duration_j \le start_i \big),
-\ i < j
-\]
+As a result, reducing the search space.
 \end{itemize}
 
 \section{Solver Implementation using Z3}
@@ -1269,9 +1258,9 @@ start_j + duration_j \le start_i \big),
 
 \subsection{Solver Performance}
 \begin{itemize}
-    \item Initially, the total runtime is 47.462405 seconds.
-    \item After optimization, the total runtime is 1.649142 seconds.
-    \item In conclusion, the optimized version saves 96.52\% of time.
+    \item Initially, the total runtime is 46.583830 seconds.
+    \item After optimization, the total runtime is 2.757376 seconds.
+    \item In conclusion, the optimized version saves 94.10\% of time.
 \end{itemize}
 
 
