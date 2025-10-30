@@ -3,9 +3,8 @@ import time
 
 start = time.time()
 
-
-x0 = BitVec('x0', 32)
 x = x0
+x0 = BitVec('x0', 32)
 y = BitVecVal(1, 32)
 
 
